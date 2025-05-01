@@ -1,0 +1,6 @@
+---
+domain: "xsoft.local"
+admin_user: "administrator"
+admin_pass: "Admin123!"
+dhcp_range: "192.168.1.100 192.168.1.200"
+dns_forwarders: "8.8.8.8"

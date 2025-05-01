@@ -1,0 +1,9 @@
+zone "{{ domain_name }}" IN {
+  type master;
+  file "/etc/bind/db.{{ domain_name }}";
+};
+
+zone "{{ realm | upper }}" IN {
+  type master;
+  file "/etc/bind/db.{{ realm | upper }}";
+};

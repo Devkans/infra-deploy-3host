@@ -1,0 +1,27 @@
+# Файл конфигурации LDAP клиента
+
+# Адрес LDAP сервера
+URI ldap://{{ ldap_server }}
+
+# Базовый DN (Distinguished Name)
+BASE {{ ldap_base }}
+
+# Режим поиска
+TIMELIMIT 10
+SIZELIMIT 500
+
+# Параметры для подключения
+LDAPVERSION 3
+TLS_CACERT /etc/ssl/certs/ca-certificates.crt
+
+# Указываем DN для подключения (если нужно)
+# Bind DN (если требуется аутентификация)
+BINDDN {{ ldap_binddn }}
+
+# Пароль для bind DN
+BINDPW {{ ldap_bindpw }}
+
+# Устанавливаем включение/выключение TLS
+# Включаем TLS (если требуется)
+TLS_REQCERT allow
+

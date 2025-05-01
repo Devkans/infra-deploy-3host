@@ -1,0 +1,102 @@
+- name: Настройка сервера Xsoft
+  hosts: servers
+  become: true
+  vars:
+    domain_name: "serverareg"
+    realm: "SERVERAREG.LOCAL"
+    server_ip: "192.168.5.14"
+    dhcp_subnet: "192.168.5.0"
+    dhcp_netmask: "255.255.255.0"
+    dhcp_range_start: "192.168.5.100"
+    dhcp_range_end: "192.168.5.200"
+    dhcp_router: "192.168.5.1"
+    dhcp_dns: "192.168.5.14"
+    samba_admin_password: "Qwerty123!"
+
+  tasks:
+    - name: Установка зависимостей
+      apt:
+        name:
+          - samba
+          - isc-dhcp-server
+          - nginx
+          - iptables-persistent
+        state: present
+
+    - name: Остановить systemd-resolved
+      service:
+        name: systemd-resolved
+        state: stopped
+        enabled: no
+
+    - name: Удалить /etc/resolv.conf
+      file:
+        path: /etc/resolv.conf
+        state: absent
+
+    - name: Установить nameserver в resolv.conf
+      copy:
+        content: |
+          nameserver 8.8.8.8
+        dest: /etc/resolv.conf
+        mode: '0644'
+
+    - name: Удаление старого smb.conf перед инициализацией домена
+      file:
+        path: /etc/samba/smb.conf
+        state: absent
+
+    - name: Инициализация домена Samba (если ещё не выполнено)
+      command: >
+        samba-tool domain provision
+        --use-rfc2307
+        --realm={{ realm }}
+        --domain={{ domain_name }}
+        --server-role=dc
+        --dns-backend=SAMBA_INTERNAL
+        --adminpass={{ samba_admin_password }}
+      args:
+        creates: /var/lib/samba/private/secrets.ldb
+
+    - name: Настройка DHCP
+      template:
+        src: ./templates/dhcpd.conf.j2
+        dest: /etc/dhcp/dhcpd.conf
+        mode: '0644'
+
+    - name: Настройка nginx
+      template:
+        src: ./templates/nginx_site.j2
+        dest: /etc/nginx/sites-available/default
+        mode: '0644'
+
+    - name: Применение конфигурации iptables
+      copy:
+        src: files/iptables.rules.txt
+        dest: /etc/iptables/rules.v4
+        mode: '0644'
+      notify:
+        - apply iptables rules
+
+    - name: Обеспечение автозагрузки iptables правил
+      lineinfile:
+        path: /etc/rc.local
+        create: yes
+        mode: '0755'
+        line: 'iptables-restore < /etc/iptables/rules.v4'
+        state: present
+        insertafter: EOF
+
+    - name: Перезапуск всех основных служб
+      service:
+        name: "{{ item }}"
+        state: restarted
+        enabled: yes
+      loop:
+        - samba-ad-dc
+        - isc-dhcp-server
+        - nginx
+
+  handlers:
+    - name: apply iptables rules
+      shell: iptables-restore < /etc/iptables/rules.v4

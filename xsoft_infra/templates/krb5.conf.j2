@@ -1,0 +1,14 @@
+[libdefaults]
+  default_realm = {{ realm | upper }}
+  dns_lookup_realm = false
+  dns_lookup_kdc = true
+
+[realms]
+  {{ realm | upper }} = {
+    kdc = {{ server_ip }}
+    admin_server = {{ server_ip }}
+  }
+
+[domain_realm]
+  .{{ domain_name }} = serverareg
+  {{ domain_name }} = serverareg

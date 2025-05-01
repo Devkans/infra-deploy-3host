@@ -1,0 +1,20 @@
+[global]
+   workgroup = {{ domain_name | upper }}
+   realm = {{ realm | upper }}
+   netbios name = {{ domain_name | upper }}
+   server role = active directory domain controller
+
+   dns forwarder = 8.8.8.8
+   allow dns updates = secure only
+
+   # Журнал и лог-файлы
+   log file = /var/log/samba/samba.log
+   log level = 1
+
+[sysvol]
+   path = /var/lib/samba/sysvol
+   read only = no
+
+[netlogon]
+   path = /var/lib/samba/sysvol/{{ realm | lower }}/scripts
+   read only = no

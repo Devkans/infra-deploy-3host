@@ -1,0 +1,92 @@
+---
+- name: Настройка клиента и подключение к домену Samba AD
+  hosts: clients
+  become: true
+
+  vars:
+    realm: SERVERAREG.LOCAL
+    domain_name: serverareg
+    domain_ou: "OU=Computers,DC=serverareg,DC=local"
+    server_ip: 192.168.5.14
+    ad_admin_password: "Qwerty123!"  # Временно: позже лучше хранить в Ansible Vault
+
+  tasks:
+    - name: Установить необходимые пакеты
+      apt:
+        name:
+          - realmd
+          - sssd
+          - samba-common
+          - krb5-user
+          - adcli
+          - samba-common-bin
+          - packagekit
+        state: present
+
+    - name: Конфигурировать Kerberos
+      template:
+        src: krb5.conf.j2
+        dest: /etc/krb5.conf
+        mode: 0644
+
+    - name: Отключить AppArmor (если используется)
+      service:
+        name: apparmor
+        state: stopped
+        enabled: no
+      when: ansible_facts['distribution'] == "Ubuntu"
+
+    - name: Настроить DNS — задать DNS-сервер вручную
+      copy:
+        dest: /etc/resolv.conf
+        content: |
+          nameserver {{ server_ip }}
+          search {{ domain_name }}.local
+        mode: '0644'
+
+    - name: Проверить доступность домена
+      command: realm discover {{ domain_name }}.local
+      register: realm_discover
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Проверить текущий статус домена
+      command: realm list
+      register: domain_status
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Выполнить kinit от имени администратора (если не в домене)
+      command: kinit administrator@{{ realm }}
+      args:
+        stdin: "{{ ad_admin_password }}"
+      no_log: true
+      ignore_errors: yes
+      when: domain_status is failed or domain_name+'.local' not in domain_status.stdout
+
+    - name: Присоединить клиента к домену (если еще не присоединен)
+      command: realm join --user=administrator --computer-ou="{{ domain_ou }}" {{ domain_name }}.local
+      args:
+        stdin: "{{ ad_admin_password }}"
+      no_log: true
+      ignore_errors: yes
+      when: domain_status is failed or domain_name+'.local' not in domain_status.stdout
+      register: join_result
+
+    - name: Перезапустить службу sssd (если были изменения)
+      service:
+        name: sssd
+        state: restarted
+      when: (domain_status is failed or domain_name+'.local' not in domain_status.stdout) and join_result is changed
+
+    - name: Проверить финальный статус подключения
+      command: realm list
+      register: final_domain_status
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Показать результат подключения
+      debug:
+        msg: |
+          Итоговый статус: {{ 'Успешно подключен к домену' if final_domain_status is succeeded and domain_name+'.local' in final_domain_status.stdout else 'Не удалось подключиться к домену' }}
+          Подробности: {{ join_result if join_result is defined else 'Не выполнялась попытка подключения' }}
