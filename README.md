@@ -74,30 +74,10 @@ Nginx: A simple web server configured for the infrastructure.
 
 Firewall: The server’s firewall is configured to allow necessary ports for Samba, DNS, and DHCP.
 
-Directory Structure
-graphql
-infra-deploy-3host/
-│
-├── playbooks/
-│   ├── server_playbook.yml        # Playbook for configuring the server
-│   ├── client_playbook.yml        # Playbook for configuring the clients
-│
-├── templates/
-│   ├── samba_config_template.conf # Template for Samba configuration
-│   ├── dns_config_template.conf   # Template for DNS configuration
-│   ├── dhcp_config_template.conf  # Template for DHCP configuration
-│
-├── inventory                      # Ansible inventory file with host details
-└── README.md                      # This README file
+
 Troubleshooting
 SSH Access Issues: Ensure you have SSH access to the server and client machines. You can test SSH access with ssh username@ip_address.
 
-Firewall Issues: Make sure that the required ports are open on the server and clients. You may need to adjust firewall settings based on your environment.
-
-Permissions Issues: Ensure that the Ansible user has the necessary permissions to execute tasks on the server and clients. You might need to use sudo for elevated privileges.
-
-License
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 Acknowledgments
 Thanks to Ansible for making infrastructure automation simple.
